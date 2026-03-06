@@ -11,8 +11,9 @@ import {
   parseAccessMetadata,
 } from "./access-tracker.js";
 import { filterNoise } from "./noise-filter.js";
-import type { DecayEngine } from "./decay-engine.js";
-import { toLifecycleMemory } from "./smart-metadata.js";
+import type { DecayEngine, DecayableMemory } from "./decay-engine.js";
+import type { TierManager } from "./tier-manager.js";
+import { toLifecycleMemory, getDecayableFromEntry } from "./smart-metadata.js";
 
 // ============================================================================
 // Types & Configuration
@@ -288,13 +289,14 @@ function cosineSimilarity(a: number[], b: number[]): number {
 
 export class MemoryRetriever {
   private accessTracker: AccessTracker | null = null;
+  private tierManager: TierManager | null = null;
 
   constructor(
     private store: MemoryStore,
     private embedder: Embedder,
     private config: RetrievalConfig = DEFAULT_RETRIEVAL_CONFIG,
     private decayEngine: DecayEngine | null = null,
-  ) {}
+  ) { }
 
   setAccessTracker(tracker: AccessTracker): void {
     this.accessTracker = tracker;
@@ -411,10 +413,10 @@ export class MemoryRetriever {
     const reranked =
       this.config.rerank !== "none"
         ? await this.rerankResults(
-            query,
-            queryVector,
-            filtered.slice(0, limit * 2),
-          )
+          query,
+          queryVector,
+          filtered.slice(0, limit * 2),
+        )
         : filtered;
 
     const temporallyRanked = this.decayEngine
@@ -541,13 +543,13 @@ export class MemoryRetriever {
       // was too generous and allowed ghost entries to survive hardMinScore (0.35).
       const fusedScore = vectorResult
         ? clamp01(
-            Math.max(
-              vectorScore + (bm25Hit * 0.15 * vectorScore),
-              (vectorScore * this.config.vectorWeight) + (bm25Score * this.config.bm25Weight),
-              bm25Score >= 0.75 ? bm25Score * 0.92 : 0,
-            ),
-            0.1,
-          )
+          Math.max(
+            vectorScore + (bm25Hit * 0.15 * vectorScore),
+            (vectorScore * this.config.vectorWeight) + (bm25Score * this.config.bm25Weight),
+            bm25Score >= 0.75 ? bm25Score * 0.92 : 0,
+          ),
+          0.1,
+        )
         : clamp01(bm25Result!.score, 0.1);
 
       fusedResults.push({

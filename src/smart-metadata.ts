@@ -1,4 +1,5 @@
 import type { MemoryCategory, MemoryTier } from "./memory-categories.js";
+import type { DecayableMemory } from "./decay-engine.js";
 
 type LegacyStoreCategory =
   | "preference"
@@ -197,4 +198,33 @@ export function toLifecycleMemory(
     createdAt,
     lastAccessedAt: metadata.last_accessed_at || createdAt,
   };
+}
+
+/**
+ * Parse a memory entry into both a DecayableMemory (for the decay engine)
+ * and the raw SmartMemoryMetadata (for in-place mutation before write-back).
+ */
+export function getDecayableFromEntry(
+  entry: EntryLike & { id?: string },
+): { memory: DecayableMemory; meta: SmartMemoryMetadata } {
+  const meta = parseSmartMetadata(entry.metadata, entry);
+  const createdAt =
+    typeof entry.timestamp === "number" && Number.isFinite(entry.timestamp)
+      ? entry.timestamp
+      : Date.now();
+
+  const memory: DecayableMemory = {
+    id: (entry as { id?: string }).id ?? "",
+    importance:
+      typeof entry.importance === "number" && Number.isFinite(entry.importance)
+        ? entry.importance
+        : 0.7,
+    confidence: meta.confidence,
+    tier: meta.tier,
+    accessCount: meta.access_count,
+    createdAt,
+    lastAccessedAt: meta.last_accessed_at || createdAt,
+  };
+
+  return { memory, meta };
 }
