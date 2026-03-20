@@ -141,6 +141,14 @@ function createMockApi(dbPath, embeddingBaseURL, llmBaseURL, logs) {
   };
 }
 
+async function runAgentEndHook(api, event, ctx) {
+  await api.hooks.agent_end(event, ctx);
+  const backgroundRun = api.hooks.agent_end?.__lastRun;
+  if (backgroundRun && typeof backgroundRun.then === "function") {
+    await backgroundRun;
+  }
+}
+
 async function seedPreference(dbPath) {
   const store = new MemoryStore({ dbPath, vectorDim: EMBEDDING_DIMENSIONS });
   const embedder = createEmbedder({
@@ -261,7 +269,8 @@ async function runScenario(mode) {
     plugin.register(api);
     await seedPreference(dbPath);
 
-    await api.hooks.agent_end(
+    await runAgentEndHook(
+      api,
       {
         success: true,
         sessionKey: "agent:life:test",
@@ -449,7 +458,8 @@ async function runMultiRoundScenario() {
     ];
 
     for (const round of rounds) {
-      await api.hooks.agent_end(
+      await runAgentEndHook(
+        api,
         {
           success: true,
           sessionKey: "agent:life:test",
@@ -539,7 +549,8 @@ async function runInjectedRecallScenario() {
     );
     plugin.register(api);
 
-    await api.hooks.agent_end(
+    await runAgentEndHook(
+      api,
       {
         success: true,
         sessionKey: "agent:life:test",
@@ -632,7 +643,8 @@ async function runPrependedRecallWithUserTextScenario() {
     );
     plugin.register(api);
 
-    await api.hooks.agent_end(
+    await runAgentEndHook(
+      api,
       {
         success: true,
         sessionKey: "agent:life:test",
@@ -723,7 +735,8 @@ async function runInboundMetadataWrappedScenario() {
     );
     plugin.register(api);
 
-    await api.hooks.agent_end(
+    await runAgentEndHook(
+      api,
       {
         success: true,
         sessionKey: "agent:life:test",
@@ -778,7 +791,8 @@ async function runSessionDeltaScenario() {
     );
     plugin.register(api);
 
-    await api.hooks.agent_end(
+    await runAgentEndHook(
+      api,
       {
         success: true,
         messages: [
@@ -791,7 +805,8 @@ async function runSessionDeltaScenario() {
       { agentId: "life", sessionKey: "agent:life:test" },
     );
 
-    await api.hooks.agent_end(
+    await runAgentEndHook(
+      api,
       {
         success: true,
         messages: [
@@ -845,7 +860,8 @@ async function runPendingIngressScenario() {
       { channelId: "discord", conversationId: "channel:1", accountId: "default" },
     );
 
-    await api.hooks.agent_end(
+    await runAgentEndHook(
+      api,
       {
         success: true,
         messages: [
@@ -899,7 +915,8 @@ async function runRememberCommandContextScenario() {
       { from: "discord:channel:1", content: "@jige_claw_bot 我的饮品偏好是乌龙茶" },
       { channelId: "discord", conversationId: "channel:1", accountId: "default" },
     );
-    await api.hooks.agent_end(
+    await runAgentEndHook(
+      api,
       {
         success: true,
         messages: [{ role: "user", content: "@jige_claw_bot 我的饮品偏好是乌龙茶" }],
@@ -911,7 +928,8 @@ async function runRememberCommandContextScenario() {
       { from: "discord:channel:1", content: "@jige_claw_bot 请记住" },
       { channelId: "discord", conversationId: "channel:1", accountId: "default" },
     );
-    await api.hooks.agent_end(
+    await runAgentEndHook(
+      api,
       {
         success: true,
         messages: [
@@ -1018,7 +1036,8 @@ async function runUserMdExclusiveProfileScenario() {
     };
     plugin.register(api);
 
-    await api.hooks.agent_end(
+    await runAgentEndHook(
+      api,
       {
         success: true,
         sessionKey: "agent:life:user-md-exclusive",
@@ -1115,7 +1134,8 @@ async function runBoundarySkipKeepsRegexFallbackScenario() {
     };
     plugin.register(api);
 
-    await api.hooks.agent_end(
+    await runAgentEndHook(
+      api,
       {
         success: true,
         sessionKey: "agent:life:user-md-fallback",

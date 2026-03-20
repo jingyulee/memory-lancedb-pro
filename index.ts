@@ -2210,7 +2210,12 @@ const memoryLanceDBProPlugin = {
 
     // Auto-capture: analyze and store important information after agent ends
     if (config.autoCapture !== false) {
-      api.on("agent_end", (event, ctx) => {
+      type AgentEndAutoCaptureHook = {
+        (event: any, ctx: any): void;
+        __lastRun?: Promise<void>;
+      };
+
+      const agentEndAutoCaptureHook: AgentEndAutoCaptureHook = (event, ctx) => {
         if (!event.success || !event.messages || event.messages.length === 0) {
           return;
         }
@@ -2220,7 +2225,7 @@ const memoryLanceDBProPlugin = {
         // here causes downstream channel deliveries (e.g. Telegram) to be
         // silently dropped when the session store lock times out.
         // See: https://github.com/CortexReach/memory-lancedb-pro/issues/260
-        void (async () => {
+        const backgroundRun = (async () => {
         try {
           // Determine agent ID and default scope
           const agentId = resolveHookAgentId(ctx?.agentId, (event as any).sessionKey);
@@ -2490,7 +2495,11 @@ const memoryLanceDBProPlugin = {
           api.logger.warn(`memory-lancedb-pro: capture failed: ${String(err)}`);
         }
         })();
-      });
+        agentEndAutoCaptureHook.__lastRun = backgroundRun;
+        void backgroundRun;
+      };
+
+      api.on("agent_end", agentEndAutoCaptureHook);
     }
 
     // ========================================================================
